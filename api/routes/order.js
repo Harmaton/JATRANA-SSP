@@ -2,13 +2,13 @@ const router = require("express").Router();
 const Order = require("../models/Order");
 const  { verifyToken, verifyTokenAndAuthorization, verifyTokenAndAdmin} = require("./verifyTokes");
 
-//CREATE Cart
-router.post("/", verifyToken, async (req,res) => {
-    const newCart = new Cart(req.body);
+//CREATE Order
+router.post("/", verifyTokenAndAuthorization, async (req,res) => {
+    const newOrder = new Order(req.body);
 
     try{
-    const savedCart = await newCart.save();
-    res.status(200).json(newCart);
+    const savedOrder = await newOrder.save();
+    res.status(200).json(savedOrder);
 
     }catch(err){
         res.status(500).json(err)
@@ -69,4 +69,33 @@ router.get("/",verifyTokenAndAdmin , async (req, res) => {
     }
 } );
 
-//GET ALL ORDER STATS BY A
+//GET ALL ORDER STATS BY ADMIN
+router.get("/income", verifyTokenAndAdmin, async (req,res) => {
+    const date = new Date();
+    const lastMonth = new Date(date.setMonth(date.getMonth() - 1))
+    const previousMonth = new Date(new Date().setMonth(lastMonth.getMonth() -1))
+
+    try{
+        const income = await Order.aggregate([
+            {$match: {createdAt: {$gte: previousMonth}}},
+            {
+                $project: 
+            {
+                    month: {$month: "$createdAt"},
+                    sales: "$amount"
+            },
+                $group: {
+                    _id: "$month",
+                    total: {$sum: "$sales"}
+            }
+        }
+
+           
+        ])
+        res.status(200).json(income)
+    }catch(err) {
+        res.status(500).json(err);
+    }
+})
+
+module.exports = router;
